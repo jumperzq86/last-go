@@ -1,0 +1,39 @@
+pprof 用于性能测试，可以进行
+cpu 性能分析
+内存性能分析
+阻塞性能分析
+锁性能分析
+
+使用方式
+1. 使用 runtime/pprof 生成pprof文件，配合 go tool pprof 进行cpu性能分析
+    > main 函数中使用如下代码生成 pprof 文件
+    f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
+	defer f.Close()
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
+	> 使用命令 go tool pprof -http=:9999 cpu.pprof 来进行数据分析
+
+
+
+2. 使用 github.com/pkg/profile 生成pprof文件，配合 go tool pprof 进行cpu性能分析以及内存等其他分析
+    > main 函数中使用如下代码生成 pprof 文件，输出中会指示生成文件位置
+    defer profile.Start().Stop() // 生成cpu性能分析文件
+    defer profile.Start(profile.MemProfile, profile.MemProfileRate(1)).Stop() // 生成内存性能分析文件
+
+    > 使用命令 go tool pprof -http=:9999 xxx.pprof 来进行数据分析
+
+
+
+3. 在 benchmark 测试中通过参数 生成pprof文件，配合 go tool pprof 进行cpu性能分析以及内存等其他分析
+    > go test -bench='xxx' . 中添加如下参数
+    -cpuprofile=$FILE
+    -memprofile=$FILE, -memprofilerate=N 调整记录速率为原来的 1/N。
+    -blockprofile=$FILE
+
+    > 使用命令 go tool pprof -http=:9999 xxx.pprof 来进行数据分析
+
+
+注意：
+进行cpu性能测试，默认是1/100s进行一次数据获取，若是程序运行太快，可能导致还没进行一次数据获取，程序就运行完了，此时就会发现生成的pprof文件是空的
+runtime.SetCPUProfileRate(200) 可以使用该命令将数据获取频率提高，比如200就是1/200s一次数据获取，一般不超过500
