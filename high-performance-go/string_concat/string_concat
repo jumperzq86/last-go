@@ -1,0 +1,25 @@
+字符串拼接有五种方式
+1. +
+2. fmt.Sprintf
+3. strings.Builder
+4. bytes.Buffer
+5. []byte
+前两种会频繁进行内存分配，性能很低
+后面三种综合来看，strings.Builder 是最好用也性能最高的
+若是提前知道所需要的总内存，那么可以使用 strings.Builder.Grow 来大大提升性能
+
+go test -bench='Concat$' -benchmem .
+
+goos: darwin
+goarch: amd64
+pkg: high-performance-go/strings_builder
+cpu: Intel(R) Core(TM) i3-3220 CPU @ 3.30GHz
+BenchmarkPlusConcat-4                 14          78568705 ns/op        530996346 B/op     10008 allocs/op
+BenchmarkSprintfConcat-4               8         138926197 ns/op        833387213 B/op     37380 allocs/op
+BenchmarkBuilderConcat-4            7443            135304 ns/op          514800 B/op         23 allocs/op
+BenchmarkBufferConcat-4             8300            144314 ns/op          423536 B/op         13 allocs/op
+BenchmarkByteConcat-4               7971            140883 ns/op          621297 B/op         24 allocs/op
+BenchmarkPreBuilderConcat-4        16528             72340 ns/op          106496 B/op          1 allocs/op
+BenchmarkPreByteConcat-4           16255             73755 ns/op          212992 B/op          2 allocs/op
+PASS
+ok      high-performance-go/strings_builder     10.684s

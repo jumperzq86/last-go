@@ -2,7 +2,7 @@ benchmark 性能测试，用于进行函数的性能测试。
 测试函数以 Benchmark开头
 使用方式
 
-// 运行当前目录所有 Benchmark函数
+// 运行当前目录所有 Benchmark函数，需要将这些函数放到 _test.go 文件中
 go test -bench .
 
 // 运行当前目录所有名字包含 xxx 的Benchmark函数
@@ -17,7 +17,7 @@ go test -bench='xxx' -benchtime=5s .
 // 运行测试时间为5s，共测试5轮
 go test -bench='xxx' -benchtime=5s -count=5 .
 
-// 运行测试次数为50
+// 运行测试次数为50，即执行测试函数50次
 go test -bench='xxx' -benchtime=50x .
 
 // 结果中显示内存相关信息
