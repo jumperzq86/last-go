@@ -1,0 +1,15 @@
+cpu访问内存时，并不是逐个字节访问，而是以字长为单位访问。
+比如32位的cpu，字长为4个字节，那么cpu访问内存的单位也是4个字节。
+注意这里，不仅指一次访问4个字节，还表示只能从4的倍数位置开始访问。
+即假设地址0x0开始，cpu 能够访问 0x0, 0x4, 0x8, 0xC, 0x10... 这些地址之后的4个字节
+
+这种情况下若是不进行内存对齐，那么可能增加cpu访问内存的次数。
+见图 https://geektutu.com/post/hpg-struct-alignment/memory_alignment.png
+
+简言之，合理的内存对齐可以提高内存读写性能，并且便于实现变量操作的原子性。
+
+
+标准库提供了 unsafe.Alignof 返回一个类型的对齐值。
+对于任意类型的变量x，unsafe.Alignof(x) 至少为1
+对于struct结构体类型的变量x，计算x每一个字段f的 unsafe.Alignof(x.f)， unsafe.Alignof(x)等于其中最大值
+对于array数组类型的变量x，unsafe.Alignof(x)等于构成数组的元素类型的对齐倍数

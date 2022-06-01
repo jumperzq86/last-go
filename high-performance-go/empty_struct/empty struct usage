@@ -1,0 +1,6 @@
+空结构体是不占用内存空间的，因此被广泛作为各种场景下的占位符使用。
+
+空结构体的作用
+1. 实现集合 map[string]struct{}
+2. 不发送数据的通道 ch := make(chan struct{})
+3. 只包含方法的结构体 type Door struct{}
