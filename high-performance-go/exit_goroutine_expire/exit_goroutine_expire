@@ -1,0 +1,39 @@
+通常创建一个协程来完成一个任务的时候，需要具有超时处理
+
+func doBadthing(done chan bool) {
+	time.Sleep(time.Second)
+	done <- true
+}
+
+func timeout(f func(chan bool)) error {
+	done := make(chan bool)
+	go f(done)
+	select {
+	case <-done:
+		fmt.Println("done")
+		return nil
+	case <-time.After(time.Millisecond):
+		return fmt.Errorf("timeout")
+	}
+}
+
+但是上述代码存在问题：
+当超时发生之后，doBadthing 函数无法退出
+两种解决方式：
+1. 将done设置为缓冲通道，非现在的无缓冲通道
+2. 利用select-default
+func doGoodthing(done chan bool) {
+	time.Sleep(time.Second)
+	select {
+	case done <- true:
+	default:
+		return
+	}
+}
+即即便done无法传入数据（阻塞），也能退出函数
+
+在 exit_goroutine_test.go 文件中，将任务拆分成两个阶段，若是第一个阶段超时，则终止；若是第一个任务没有超时，则继续。
+实际业务中常见到，将服务端接收请求后的任务拆分为两段，一段是执行任务，一段是发送结果。此时会出现两种情况：
+1. 任务正常执行，向客户端返回执行结果
+2. 任务执行超时，向客户端返回超时
+这种情况下，只能使用上述 select-default 方式，不能使用缓冲区通道的方式。
