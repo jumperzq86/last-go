@@ -1,4 +1,4 @@
-package _range
+package __range
 
 import "testing"
 

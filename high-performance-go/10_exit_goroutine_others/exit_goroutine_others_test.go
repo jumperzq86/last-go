@@ -1,4 +1,4 @@
-package exit_goroutine_others
+package _0_exit_goroutine_others
 
 import (
 	"fmt"

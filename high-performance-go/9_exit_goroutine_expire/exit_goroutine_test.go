@@ -1,4 +1,4 @@
-package exit_goroutine_expire
+package __exit_goroutine_expire
 
 import (
 	"fmt"
