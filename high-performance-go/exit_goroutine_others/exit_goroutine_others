@@ -1,0 +1,214 @@
+close chan 的本质其实是告知接收端通道已经关闭，让接收端退出协程。
+另外在发送端也退出协程。
+这样就没有协程再使用该通道，才能通过垃圾回收来回收协程。
+总结一下就是
+1. 一个通道要被回收，那么需要先让所有使用该通道的协程都退出
+2. 一个通道要被回收，不一定要close他
+3. close chan 只是为了发送通知给接收协程，让其知道需要退出了，
+   仅此而已，close chan与通道的回收没有必然联系
+
+因此有人总结了"优雅关闭通道的方式"
+1. m个接收者和1个发送者，发送者通过关闭用来传输数据的通道来传递发送结束信号
+2. 1个接收者和n个发送者，此唯一接收者通过关闭一个额外的信号通道来通知发送者不要再发送数据了
+   这个场景中，发送者就不能close数据通道，因为多次close同一个通道会导致panic，这些发送者只需要退出协程即可
+   另外接收者也退出协程，就没有协程再引用数据通道，因此数据通道会被回收
+3. m个接收者和n个发送者，他们中的任何协程都可以让一个中间调解协程帮忙发送停止数据传送的信号
+4. 更多变体，如下
+
+这些例子可以在 go101 中查看
+https://go101.org/article/channel-closing.html
+这个网页上还多了两个更复杂的变体
+
+---------------------
+---------------------
+---------------------
+
+> A variant of the "M receivers, one sender" situation: the close request is made by a third-party goroutine
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+	log.SetFlags(0)
+
+	// ...
+	const Max = 100000
+	const NumReceivers = 100
+	const NumThirdParties = 15
+
+	wgReceivers := sync.WaitGroup{}
+	wgReceivers.Add(NumReceivers)
+
+	// ...
+	dataCh := make(chan int)
+	closing := make(chan struct{}) // signal channel
+	closed := make(chan struct{})
+
+	// The stop function can be called
+	// multiple times safely.
+	stop := func() {
+		select {
+		case closing<-struct{}{}:
+			<-closed
+		case <-closed:
+		}
+	}
+
+	// some third-party goroutines
+	for i := 0; i < NumThirdParties; i++ {
+		go func() {
+			r := 1 + rand.Intn(3)
+			time.Sleep(time.Duration(r) * time.Second)
+			stop()
+		}()
+	}
+
+	// the sender
+	go func() {
+		defer func() {
+			close(closed)
+			close(dataCh)
+		}()
+
+		for {
+			select{
+			case <-closing: return
+			default:
+			}
+
+			select{
+			case <-closing: return
+			case dataCh <- rand.Intn(Max):
+			}
+		}
+	}()
+
+	// receivers
+	for i := 0; i < NumReceivers; i++ {
+		go func() {
+			defer wgReceivers.Done()
+
+			for value := range dataCh {
+				log.Println(value)
+			}
+		}()
+	}
+
+	wgReceivers.Wait()
+}
+
+---------------------
+---------------------
+---------------------
+
+> A variant of the "N sender" situation: the data channel must be closed to tell receivers that data sending is over
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+	log.SetFlags(0)
+
+	// ...
+	const Max = 1000000
+	const NumReceivers = 10
+	const NumSenders = 1000
+	const NumThirdParties = 15
+
+	wgReceivers := sync.WaitGroup{}
+	wgReceivers.Add(NumReceivers)
+
+	// ...
+	dataCh := make(chan int)     // will be closed
+	middleCh := make(chan int)   // will never be closed
+	closing := make(chan string) // signal channel
+	closed := make(chan struct{})
+
+	var stoppedBy string
+
+	// The stop function can be called
+	// multiple times safely.
+	stop := func(by string) {
+		select {
+		case closing <- by:
+			<-closed
+		case <-closed:
+		}
+	}
+
+	// the middle layer
+	go func() {
+		exit := func(v int, needSend bool) {
+			close(closed)
+			if needSend {
+				dataCh <- v
+			}
+			close(dataCh)
+		}
+
+		for {
+			select {
+			case stoppedBy = <-closing:
+				exit(0, false)
+				return
+			case v := <- middleCh:
+				select {
+				case stoppedBy = <-closing:
+					exit(v, true)
+					return
+				case dataCh <- v:
+				}
+			}
+		}
+	}()
+
+	// some third-party goroutines
+	for i := 0; i < NumThirdParties; i++ {
+		go func(id string) {
+			r := 1 + rand.Intn(3)
+			time.Sleep(time.Duration(r) * time.Second)
+			stop("3rd-party#" + id)
+		}(strconv.Itoa(i))
+	}
+
+	// senders
+	for i := 0; i < NumSenders; i++ {
+		go func(id string) {
+			for {
+				value := rand.Intn(Max)
+				if value == 0 {
+					stop("sender#" + id)
+					return
+				}
+
+				select {
+				case <- closed:
+					return
+				default:
+				}
+
+				select {
+				case <- closed:
+					return
+				case middleCh <- value:
+				}
+			}
+		}(strconv.Itoa(i))
+	}
+
+	// receivers
+	for range [NumReceivers]struct{}{} {
+		go func() {
+			defer wgReceivers.Done()
+
+			for value := range dataCh {
+				log.Println(value)
+			}
+		}()
+	}
+
+	// ...
+	wgReceivers.Wait()
+	log.Println("stopped by", stoppedBy)
+}
+
+
+非常精巧
+
+总之，总能够找到满足需求，且能优雅关闭通道的方案

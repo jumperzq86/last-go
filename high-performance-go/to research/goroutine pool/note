@@ -1,0 +1,8 @@
+研究对象
+第三方库 https://github.com/panjf2000/ants
+以及 github页最后文章
+
+Goroutine 并发调度模型深度解析之手撸一个高性能 goroutine 池
+Visually Understanding Worker Pool
+The Case For A Go Worker Pool
+Go Concurrency - GoRoutines, Worker Pools and Throttling Made Simple

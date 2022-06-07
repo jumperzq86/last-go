@@ -1,0 +1,21 @@
+很多时候，不能让协程数量无限增长，需要设置一个上限，否则达到一定数量就会导致程序崩溃。
+此时可以考虑使用协程池
+https://github.com/panjf2000/ants
+github页最后有几篇文章非常牛逼，值得深入学习
+
+1. Goroutine 并发调度模型深度解析之手撸一个高性能 goroutine 池
+https://strikefreedom.top/archives/high-performance-implementation-of-goroutine-pool
+
+2. Visually Understanding Worker Pool
+https://medium.com/coinmonks/visually-understanding-worker-pool-48a83b7fc1f5
+
+3. The Case For A Go Worker Pool
+https://brandur.org/go-worker-pool
+
+4. Go Concurrency - GoRoutines, Worker Pools and Throttling Made Simple
+https://twin.sh/articles/39/go-concurrency-goroutines-worker-pools-and-throttling-made-simple
+
+
+有些时候，需要设置机器环境变量，以便让一个进程能够使用更多的系统资源
+1. ulimit
+2. virtual memory
