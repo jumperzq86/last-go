@@ -1,0 +1,33 @@
+多数情况下，sync.Once 被用在控制变量的初始化，这个变量的读写满足如下三个条件
+1. 当且仅当第一次访问某个变量时，进行初始化（写）
+2. 变量初始化过程中，所有读都被阻塞，直到初始化完成
+3. 变量仅初始化一次，初始化完成后驻留在内存中
+
+sync.Once 的核型代码如下
+
+import (
+    "sync/atomic"
+)
+
+type Once struct{
+    done uint32
+    m Mutex
+}
+
+func (o *Once) Do(f func()) {
+    if atomic.LoadUint32(&o.done) == 0{
+        o.doSlow(f)
+    }
+}
+
+func (o *Once) doSlow(f func()) {
+    o.m.Lock()
+    defer o.m.Unlock()
+    if o.done == 0{
+        defer atomic.StoreUint32(&o.done, 1)
+        f()
+    }
+}
+
+这里 defer atomic.StoreUint32(&o.done, 1) 而不是 o.done = 1
+是因为在 lock 之外有 if atomic.LoadUint32(&o.done) == 0

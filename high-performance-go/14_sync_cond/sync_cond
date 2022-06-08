@@ -1,0 +1,15 @@
+sync.Cond 经常用在多个goroutine等待，一个/多个goroutine通知的场景。
+事实上大部分时候使用channel也能实现，只不过逻辑会更复杂一点。
+这里主要有三个函数
+Signal 随机唤醒一个协程
+Broadcast 唤醒所有协程
+Wait 释放锁，并且挂起协程，等待被唤醒（别的协程调用Signal/Broadcast）之后，Wait再次尝试抢锁
+
+这里需要注意两点
+1. Wait 应该放置在 for 条件检测 循环中，因为被唤醒并且抢到锁之后，还需要再次检测条件是否满足，不满足则继续Wait
+2. Signal 只会唤醒一个协程，对于其他未唤醒的协程需要被唤醒之后才能让Wait尝试抢锁
+   唤醒是唤醒，等待抢锁是等待抢锁，不要混淆两者
+   先要被唤醒，才能让Wait去抢锁
+   一个协程被Wait挂起，若是之后没有被唤醒，那么就一直挂起，Wait是不会去抢锁的。
+   比如将 sync_cond.go 中 write 函数中 Broadcast 换成 Signal，那么最终只会有一个read协程执行
+   要想所有read都执行，那么需要调用 3次 c.Signal()
